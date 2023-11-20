@@ -1,4 +1,6 @@
 #include "fft_ifft.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #define PI 3.1415926535897932385
 
@@ -64,10 +66,63 @@ static inline number sinx(number arg) {
   return temp;
 #endif
 
+/* Вспомогательная функция для умножения комплексного числа в алгебраической форме на комплексное число в показательной */
+
 static inline complex expMult(const complex* arg, const number* pow) { EXPMULTBODY }
 
+/* Вспомогательный макрос для умножения комплексных чисел в алгебраической форме */
+
+#define COMPLEXMULT(out, op1, op2) \
+  out.Real = (op1.Real)*(op2.Real) - (op1.Imagine)*(op2.Imagine); \
+  out.Imagine = (op1.Real)*(op2.Imagine) + (op1.Imagine)*(op2.Real)
+
+/* Вспомогательный макрос для сложения комплексных чисел в алгебраической форме */
+
+#define COMPLEXADD(out, op1, op2) \
+  out.Real = op1.Real + op2.Real; \
+  out.Imagine = op1.Imagine + op2.Imagine
+
+static int fft_rec(number* in_vector, complex* out_vector, size_t size, complex* lsum, complex* rsum) {
+
+  if(0 == size%2) {
+    /* Рекурсия по первой части вектора */
+
+    fft_rec(in_vector, out_vector, size/2, lsum, rsum);
+
+    /* Вторая часть рассчитывается проще */
+
+    complex temp1 = {0,0}, temp2 = {0,0}, temp3 = {(number) 1/size,0};
+
+    for(size_t k=size/2; k<size; k++) {
+
+      COMPLEXMULT(temp1, temp3, lsum[k-size/2]);
+      COMPLEXMULT(temp2, temp3, rsum[k-size/2]);
+      number pow = (-2*PI*k)/(size);
+      temp2 = expMult(&temp2, &pow);
+      COMPLEXADD(&(out_vector[k]), temp1, temp2);
+    }
+
+  }
+
+  else {
+    /* Прямое вычисление */
+
+  }
+
+  return 0;
+
+
+}
+
 int fft(number* in_vector, complex* out_vector, size_t size) {
-  return NULL;
+  complex *lsum, *rsum;
+
+  if(0 == size%2) {
+    lsum = (complex* ) malloc((size/2)*sizeof(complex));
+    rsum = (complex* ) malloc((size/2)*sizeof(complex));
+  }
+
+  return fft_rec(in_vector, out_vector, size, lsum, rsum);
 }
 
 int ifft(complex* in_vector, number* out_vector, size_t size) {
