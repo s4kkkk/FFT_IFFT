@@ -1,6 +1,7 @@
 #include "fft_ifft.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define PI 3.1415926535897932385
 
@@ -16,7 +17,7 @@ static inline number sinx(number arg) {
     sign = -1;
     arg = -arg;
   } 
-  if((int)(arg / (2*PI)) != 0) {arg = arg - (number) ( (int) (arg/(PI)) ) *PI;}
+  if((int)(arg / (2*PI)) != 0) {arg = arg - (number) ( (int) (arg/(2*PI)) ) *2*PI;}
 
   /* Преобразования, приводящие arg в промежуто от 0 до PI/2 */
 
@@ -82,49 +83,166 @@ static inline complex expMult(const complex* arg, const number* pow) { EXPMULTBO
   out.Real = op1.Real + op2.Real; \
   out.Imagine = op1.Imagine + op2.Imagine
 
-static int fft_rec(number* in_vector, complex* out_vector, size_t size, complex* lsum, complex* rsum) {
+
+
+static int fft_rec(number* in_vector, complex* out_vector, size_t size, size_t initSize, size_t koefA, size_t koefB) {
 
   if(0 == size%2) {
-    /* Рекурсия по первой части вектора */
+    // Делим на две суммы с прореживанием по отсчетам
 
-    fft_rec(in_vector, out_vector, size/2, lsum, rsum);
+    // Заполнение первой суммы, четные отсчеты
+    fft_rec(in_vector, out_vector, size/2, initSize, 2*koefA, koefB);
 
-    /* Вторая часть рассчитывается проще */
+    // Заполнение второй суммы, нечетные отсчеты
+    fft_rec(in_vector, (out_vector + size/2), size/2, initSize, 2*koefA, (koefA+koefB));
 
-    complex temp1 = {0,0}, temp2 = {0,0}, temp3 = {(number) 1/size,0};
+    // Прямое вычисление
 
-    for(size_t k=size/2; k<size; k++) {
+    complex op1, op2, multResult;
 
-      COMPLEXMULT(temp1, temp3, lsum[k-size/2]);
-      COMPLEXMULT(temp2, temp3, rsum[k-size/2]);
-      number pow = (-2*PI*k)/(size);
-      temp2 = expMult(&temp2, &pow);
-      COMPLEXADD(&(out_vector[k]), temp1, temp2);
+    // Записываем результат в выходной вектор
+    for(size_t i=0; i<(size/2); i++) {
+
+      op1 = out_vector[i];
+      op2 = out_vector[i + (size/2)];
+
+      // вычисляем i-й элемент выходного вектора
+      number pow = -(2*PI*i)/(size);
+      multResult = expMult(&op2, &pow);
+      COMPLEXADD(out_vector[i], op1, multResult);
+
+      // вычисляем (i + size/2)-й элемент выходно вектора
+
+      pow = -(2*PI*(i+((number) size/2)))/(size);
+      multResult = expMult(&op2, &pow);
+      COMPLEXADD(out_vector[i+(size/2)], op1, multResult);
     }
 
   }
 
+  // прореживание невозможно, вычисляем прямо
+
   else {
-    /* Прямое вычисление */
+
+    complex multResult;
+
+    for(size_t i=0; i<size; i++) {
+
+      out_vector[i].Real = 0;
+      out_vector[i].Imagine = 0;
+
+      for(size_t j=0; (j*koefA + koefB)<initSize; j++) {
+
+        number pow = -(2*PI*i*j)/(size);
+        complex current = {in_vector[(j*koefA + koefB)], 0};
+        multResult = expMult(&current, &pow);
+
+        COMPLEXADD(out_vector[i], out_vector[i], multResult);
+      }
+
+    }
 
   }
 
   return 0;
+}
 
+int dft(number* in_vector, complex* out_vector, size_t size) {
 
+  complex multResult;
+
+  for(size_t i=0; i<size; i++) {
+
+    out_vector[i].Real = 0;
+    out_vector[i].Imagine = 0;
+
+    for(size_t j=0; j<size; j++) {
+
+      number pow = -(2*PI*i*j)/(size);
+      complex current = {in_vector[j], 0};
+      multResult = expMult(&current, &pow);
+
+      COMPLEXADD(out_vector[i], out_vector[i], multResult);
+    }
+
+  }
+  return 0;
 }
 
 int fft(number* in_vector, complex* out_vector, size_t size) {
-  complex *lsum, *rsum;
-
-  if(0 == size%2) {
-    lsum = (complex* ) malloc((size/2)*sizeof(complex));
-    rsum = (complex* ) malloc((size/2)*sizeof(complex));
-  }
-
-  return fft_rec(in_vector, out_vector, size, lsum, rsum);
+  return fft_rec(in_vector, out_vector, size, size, 1, 0);
 }
 
-int ifft(complex* in_vector, number* out_vector, size_t size) {
-  return NULL;
+static int ifft_rec(complex* in_vector, complex* out_vector, size_t size, size_t initSize, size_t koefA, size_t koefB) {
+
+  if(0 == size%2) {
+    // Делим на две суммы с прореживанием по отсчетам
+
+    // Заполнение первой суммы, четные отсчеты
+    ifft_rec(in_vector, out_vector, size/2, initSize, 2*koefA, koefB);
+
+    // Заполнение второй суммы, нечетные отсчеты
+    ifft_rec(in_vector, (out_vector + size/2), size/2, initSize, 2*koefA, (koefA+koefB));
+
+    // Прямое вычисление
+
+    complex op1, op2, multResult;
+
+    // Записываем результат в выходной вектор
+    for(size_t i=0; i<(size/2); i++) {
+
+      op1 = out_vector[i];
+      op2 = out_vector[i + (size/2)];
+
+      // вычисляем i-й элемент выходного вектора
+      number pow = (2*PI*i)/(size);
+      multResult = expMult(&op2, &pow);
+      COMPLEXADD(out_vector[i], op1, multResult);
+
+      // вычисляем (i + size/2)-й элемент выходно вектора
+
+      pow = (2*PI*(i+((number) size/2)))/(size);
+      multResult = expMult(&op2, &pow);
+      COMPLEXADD(out_vector[i+(size/2)], op1, multResult);
+    }
+
+  }
+
+  // прореживание невозможно, вычисляем прямо
+
+  else {
+
+    complex multResult;
+
+    for(size_t i=0; i<size; i++) {
+
+      out_vector[i].Real = 0;
+      out_vector[i].Imagine = 0;
+
+      for(size_t j=0; (j*koefA + koefB)<initSize; j++) {
+
+        number pow = (2*PI*i*j)/(size);
+        complex current = in_vector[(j*koefA + koefB)];
+        multResult = expMult(&current, &pow);
+
+        COMPLEXADD(out_vector[i], out_vector[i], multResult);
+      }
+
+    }
+
+  }
+
+  if(size == initSize) {
+    for(size_t i=0; i<size; i++) {
+      out_vector[i].Real = ((number)1/size) * out_vector[i].Real;
+      out_vector[i].Imagine = ((number)1/size) * out_vector[i].Imagine;
+    }
+  }
+
+  return 0;
+
+}
+
+int ifft(complex* in_vector, complex* out_vector, size_t size) {
+  return ifft_rec(in_vector, out_vector, size, size, 1, 0);
 }
