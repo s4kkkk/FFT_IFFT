@@ -84,67 +84,166 @@ static inline complex expMult(const complex* arg, const number* pow) { EXPMULTBO
   out.Imagine = op1.Imagine + op2.Imagine
 
 
+/* Перечисление, описывающее состояния конечного автомата, выполняющего БПФ */
 
-static int fft_rec(number* in_vector, complex* out_vector, size_t size, size_t initSize, size_t koefA, size_t koefB) {
+typedef enum {
 
-  if(0 == size%2) {
-    // Делим на две суммы с прореживанием по отсчетам
+  EvenProcessing, // Состояние обработки чётной группы
+  EvenProcessed, // Терминальное состояние (состояние выхода из текущей группы)
 
-    // Заполнение первой суммы, четные отсчеты
-    fft_rec(in_vector, out_vector, size/2, initSize, 2*koefA, koefB);
+  OddProcessing, // Состояние обработки нечётной группы
+  OddProcessed, // Терминальное состояние (состояние выхода из текущей группы)
 
-    // Заполнение второй суммы, нечетные отсчеты
-    fft_rec(in_vector, (out_vector + size/2), size/2, initSize, 2*koefA, (koefA+koefB));
+  InitState, // Начальное состояние 
 
-    // Прямое вычисление
+  MergeProcessing, // Состояние слияния двух групп
+  MergeProcessed, // Терминальное состояние (состояние выхода из текущей группы)
 
-    complex op1, op2, multResult;
+  EXIT // Состояние выхода
+} state;
 
-    // Записываем результат в выходной вектор
-    for(size_t i=0; i<(size/2); i++) {
 
-      op1 = out_vector[i];
-      op2 = out_vector[i + (size/2)];
+static int fft_internal(number* in_vector, complex* out_vector, size_t size, size_t initSize, size_t koefA, size_t koefB) {
+  
 
-      // вычисляем i-й элемент выходного вектора
-      number pow = -(2*PI*i)/(size);
-      multResult = expMult(&op2, &pow);
-      COMPLEXADD(out_vector[i], op1, multResult);
+  state CurrentState = InitState;
 
-      // вычисляем (i + size/2)-й элемент выходно вектора
+  while(CurrentState != EXIT) {
 
-      pow = -(2*PI*(i+((number) size/2)))/(size);
-      multResult = expMult(&op2, &pow);
-      COMPLEXADD(out_vector[i+(size/2)], op1, multResult);
+  
+
+    if(CurrentState == MergeProcessed) {
+
+      // Слияние завершено, возвращаемся в предыдущее состояние
+      if(size == initSize) {
+        CurrentState = EXIT;
+        continue;
+      }
+
+      else if(koefA/2 <= koefB) {
+        // Обрабатывалась нечетная группа. Возвращаемся в терминальное состояние OddProcessed
+        CurrentState = OddProcessed;
+        continue;
+      }
+
+      else {
+        // Обрабатывалась четная группа. Возвращаемся в терминальное состояние EvenProcessed
+        CurrentState = EvenProcessed;
+        continue;
+      }
     }
 
-  }
+    else if(CurrentState == OddProcessed) {
+      size *= 2;
+      out_vector -= size/2;
+      koefA /= 2;
+      koefB -= koefA;
+      CurrentState = MergeProcessing;
+      continue;
+    }
 
-  // прореживание невозможно, вычисляем прямо
+    // После обработки чётной группы начинаем обрабатывать нечетную
+    else if(CurrentState == EvenProcessed) {
+      koefA/=2;
+      size *=2;
 
-  else {
+      out_vector +=  size/2;
+      size /= 2;
+      koefB = koefA + koefB;
+      koefA *= 2;
 
-    complex multResult;
+      CurrentState = OddProcessing;
+      continue;
+    }
 
-    for(size_t i=0; i<size; i++) {
+    
+    if(0 == size%2) {
 
-      out_vector[i].Real = 0;
-      out_vector[i].Imagine = 0;
+      // Выполнение слияния, если сейчас находимся в этом состоянии
+      if(CurrentState == MergeProcessing) {
 
-      for(size_t j=0; (j*koefA + koefB)<initSize; j++) {
+        complex op1, op2, multResult;
+	
+    	  // Записываем результат в выходной вектор
+    	  for(size_t i=0; i<(size/2); i++) {
+	
+      	  op1 = out_vector[i];
+      	  op2 = out_vector[i + (size/2)];
+	
+      	  //  вычисляем i-й элемент выходного вектора
+      	  number pow = -(2*PI*i)/(size);
+      	  multResult = expMult(&op2, &pow);
+      	  COMPLEXADD(out_vector[i], op1, multResult);
+	
+      	  // вычисляем (i + size/2)-й элемент выходно вектора
+	
+      	  pow = -(2*PI*(i+((number) size/2)))/(size);
+      	  multResult = expMult(&op2, &pow);
+      	  COMPLEXADD(out_vector[i+(size/2)], op1, multResult);
+    	  }
 
-        number pow = -(2*PI*i*j)/(size);
-        complex current = {in_vector[(j*koefA + koefB)], 0};
-        multResult = expMult(&current, &pow);
+      }
 
-        COMPLEXADD(out_vector[i], out_vector[i], multResult);
+      // Иначе делим группу на две: четные и нечетные отсчеты и начинаем обрабатывать с четных
+      else {
+        size /= 2;
+        koefA *= 2;
+        CurrentState = EvenProcessing;
+        continue;
+      }
+	
+    }
+
+    // Прореживание невозможно (текущая группа не делится на два. Вычисление обычного ДПФ для этой группы)
+    
+    else {
+
+      complex multResult;
+  
+      for(size_t i=0; i<size; i++) {
+  
+        out_vector[i].Real = 0;
+        out_vector[i].Imagine = 0;
+  
+        for(size_t j=0; (j*koefA + koefB)<initSize; j++) {
+  
+          number pow = -(2*PI*i*j)/(size);
+          complex current = {in_vector[(j*koefA + koefB)], 0};
+          multResult = expMult(&current, &pow);
+  
+          COMPLEXADD(out_vector[i], out_vector[i], multResult);
+        }
       }
 
     }
 
+    // Обработка завершена. Необходимо сменить текущее состояние на одно из терминальных
+    switch (CurrentState) {
+
+      case EvenProcessing:
+        CurrentState = EvenProcessed;
+        continue;
+
+      case OddProcessing:
+        CurrentState = OddProcessed;
+        continue;
+
+      case MergeProcessing:
+        CurrentState = MergeProcessed;
+        continue;
+
+      case InitState:
+        CurrentState = EXIT;
+        continue;
+
+      default:
+        continue;
+      }
+
   }
 
   return 0;
+
 }
 
 int dft(number* in_vector, complex* out_vector, size_t size) {
@@ -170,7 +269,7 @@ int dft(number* in_vector, complex* out_vector, size_t size) {
 }
 
 int fft(number* in_vector, complex* out_vector, size_t size) {
-  return fft_rec(in_vector, out_vector, size, size, 1, 0);
+  return fft_internal(in_vector, out_vector, size, size, 1, 0);
 }
 
 static int ifft_rec(complex* in_vector, complex* out_vector, size_t size, size_t initSize, size_t koefA, size_t koefB) {
