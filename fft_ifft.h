@@ -24,12 +24,12 @@ typedef struct {
  * выход - массив комплексных чисел типа complex, содержащих комплексные числа
  * в алгебраической форме 
  */
+
 int fft(number* in_vector, complex* out_vector, size_t size);
 
-int dft(number* in_vector, complex* out_vector, size_t size);
 
 /* обратное преобразование Фурье. Вход - массив комплексных чисел типа complex,
- * содержащий комплексные числа в алгебраической форме, выход - массив типа number
+ * содержащий комплексные числа в алгебраической форме, выход - массив типа complex
  */
 
 int ifft(complex* in_vector, complex* out_vector, size_t size);
