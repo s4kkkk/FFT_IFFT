@@ -246,27 +246,6 @@ static int fft_internal(number* in_vector, complex* out_vector, size_t size, siz
 
 }
 
-int dft(number* in_vector, complex* out_vector, size_t size) {
-
-  complex multResult;
-
-  for(size_t i=0; i<size; i++) {
-
-    out_vector[i].Real = 0;
-    out_vector[i].Imagine = 0;
-
-    for(size_t j=0; j<size; j++) {
-
-      number pow = -(2*PI*i*j)/(size);
-      complex current = {in_vector[j], 0};
-      multResult = expMult(&current, &pow);
-
-      COMPLEXADD(out_vector[i], out_vector[i], multResult);
-    }
-
-  }
-  return 0;
-}
 
 int fft(number* in_vector, complex* out_vector, size_t size) {
   return fft_internal(in_vector, out_vector, size, size, 1, 0);
