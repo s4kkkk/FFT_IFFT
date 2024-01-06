@@ -19,7 +19,7 @@ static inline number sinx(number arg) {
   } 
   if((int)(arg / (2*PI)) != 0) {arg = arg - (number) ( (int) (arg/(2*PI)) ) *2*PI;}
 
-  /* Преобразования, приводящие arg в промежуто от 0 до PI/2 */
+  /* Преобразования, приводящие arg в промежуток от 0 до PI/2 */
 
   if((arg>=0) && (arg<=PI/2)) {
     current_index = (size_t) (arg/TABLESTEP);
@@ -175,7 +175,7 @@ static int fft_internal(number* in_vector, complex* out_vector, size_t size, siz
       	  multResult = expMult(&op2, &pow);
       	  COMPLEXADD(out_vector[i], op1, multResult);
 	
-      	  // вычисляем (i + size/2)-й элемент выходно вектора
+      	  // вычисляем (i + size/2)-й элемент выходного вектора
 	
       	  pow = -(2*PI*(i+((number) size/2)))/(size);
       	  multResult = expMult(&op2, &pow);
@@ -327,7 +327,7 @@ state CurrentState = InitState;
           multResult = expMult(&op2, &pow);
           COMPLEXADD(out_vector[i], op1, multResult);
 
-          // вычисляем (i + size/2)-й элемент выходно вектора
+          // вычисляем (i + size/2)-й элемент выходного вектора
 
           pow = (2*PI*(i+((number) size/2)))/(size);
           multResult = expMult(&op2, &pow);
