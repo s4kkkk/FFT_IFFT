@@ -2,23 +2,16 @@
 
 SOURCES = fft_ifft.c
 HEADERS = fft_ifft.h
-LIBMPREFIX = /usr/lib
 
 all: libfft_ifft.a
 
 clean: 
-	rm -f libfft_ifft.a fft_ifft.o fft_ifft_linked.o trig_table.h
+	rm -f libfft_ifft.a fft_ifft.o trig_table.h
 
 
-libfft_ifft.a: fft_ifft_linked.o
-	ar cr libfft_ifft.a fft_ifft_linked.o
+libfft_ifft.a: fft_ifft.o
+	ar cr libfft_ifft.a fft_ifft.o
  
-fft_ifft_linked.o: fft_ifft.o
-ifeq ($(TABLE), yes)
-		mv fft_ifft.o fft_ifft_linked.o
-else
-		ld -r -o fft_ifft_linked.o fft_ifft.o $(LIBMPREFIX)/libm.a
-endif
 
 fft_ifft.o: $(SOURCES) $(HEADERS)
 ifeq ($(TABLE), yes)
