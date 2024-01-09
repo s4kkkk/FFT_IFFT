@@ -1,5 +1,5 @@
 #   Быстрое преобразование Фурье и обратное быстрое преобразование Фурье
-Пространственная сложность алгоритма - O(1).
+Низкое потребление памяти. Пространственная сложность алгоритма - O(1).
 Временная сложность алгоритма - O(Nlog(N)) в случае, если N - степень двойки.
 
 # Системные требования
@@ -39,4 +39,46 @@ make TABLE=no
 gcc -o myCode myCode.c -L. -lfft_ifft -lm
 ```
 
+
+
+# Fast Fourier transform and inverse fast Fourier transform
+Low memory consumption. The memory complexity of the algorithm is O(1).
+The time complexity of the algorithm is O(Nlog(N)) if N is a power of two.
+
+# System requirements
+- [gcc](https://gcc.gnu.org/install/)
+- [python 3](https://www.python.org/downloads/) or higher
+- [make](https://www.gnu.org/software/make/)
+
+# Build (Linux only)
+
+## Cloning the repository
+If you have `git` installed, then cloning can be performed with the command
+```bash
+git clone https://github.com/s4kkkk/FFT_IFFT.git
+```
+If not, you can simply download the archive with the source code, and then unzip it anywhere.
+
+## Assembly
+
+If you need to use a table of trigonometric functions, uncomment the macro `TABLE` in `fft_ifft.h`, then run the command
+```bash
+make TABLE=yes SAMPLES=<number of nodes in the table. may be empty>
+```
+Otherwise
+```bash
+make TABLE=no
+```
+After executing the commands, the file `libfft_ifft.a` will appear in the root directory of the repository
+
+# Usage
+The interface to the code is described in the file `fft_ifft.h`
+
+To build the library, if the table of trigonometric functions is not used (`TABLE=no` is specified), it is necessary to attach `libm` to the component file.
+
+
+For example, if the file using the library `libfft_ifft.a` is called `myCode.c`, then the compilation command will look like this (`libfft_ifft.a` move to the directory where myCode.c is located):
+```bash
+gcc -o myCode myCode.c -L. -lfft_ifft -lm
+```
 
