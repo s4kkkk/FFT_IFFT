@@ -59,7 +59,7 @@ git clone https://github.com/s4kkkk/FFT_IFFT.git
 ```
 If not, you can simply download the archive with the source code, and then unzip it anywhere.
 
-## Assembly
+## Build
 
 If you need to use a table of trigonometric functions, uncomment the macro `TABLE` in `fft_ifft.h`, then run the command
 ```bash
