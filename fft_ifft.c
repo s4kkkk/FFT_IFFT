@@ -103,7 +103,7 @@ typedef enum {
 } state;
 
 
-static int fft_internal(number* in_vector, complex* out_vector, size_t size, size_t initSize, size_t koefA, size_t koefB) {
+static int fft_internal(complex* in_vector, complex* out_vector, size_t size, size_t initSize, size_t koefA, size_t koefB) {
   
 
   state CurrentState = InitState;
@@ -208,7 +208,8 @@ static int fft_internal(number* in_vector, complex* out_vector, size_t size, siz
         for(size_t j=0; (j*koefA + koefB)<initSize; j++) {
   
           number pow = -(2*PI*i*j)/(size);
-          complex current = {in_vector[(j*koefA + koefB)], 0};
+          complex current = in_vector[(j*koefA + koefB)];
+
           multResult = expMult(&current, &pow);
   
           COMPLEXADD(out_vector[i], out_vector[i], multResult);
@@ -247,7 +248,7 @@ static int fft_internal(number* in_vector, complex* out_vector, size_t size, siz
 }
 
 
-int fft(number* in_vector, complex* out_vector, size_t size) {
+int fft(complex* in_vector, complex* out_vector, size_t size) {
   return fft_internal(in_vector, out_vector, size, size, 1, 0);
 }
 

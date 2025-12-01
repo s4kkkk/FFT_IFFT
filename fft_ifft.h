@@ -6,7 +6,7 @@
 
 //----------------------------------------------//
 /* тип, который будет использоваться в векторах */
-typedef double number;
+typedef float number;
 
 /* убрать комментарий, если необходимо хранение таблицы тригонометрических функций */
 //#define TABLE 
@@ -25,7 +25,7 @@ typedef struct {
  * в алгебраической форме 
  */
 
-int fft(number* in_vector, complex* out_vector, size_t size);
+int fft(complex* in_vector, complex* out_vector, size_t size);
 
 
 /* обратное преобразование Фурье. Вход - массив комплексных чисел типа complex,
